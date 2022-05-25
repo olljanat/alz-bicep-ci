@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "parTopLevelManagementGroupParentId": {
+      "value": "/providers/Microsoft.Management/managementGroups/13a69a3b-cf5f-4204-b274-3e9ce5240a60"
+    },
+    "parTopLevelManagementGroupPrefix": {
+      "value": "mg"
+    },
+    "parTopLevelManagementGroupDisplayName": {
+      "value": "Azure Landing Zones"
+    },
+    "parTelemetryOptOut": {
+      "value": false
+    }
+  }
+}

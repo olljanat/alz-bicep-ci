@@ -1,0 +1,12 @@
+stages:
+- stage: verifyCommits
+  displayName: Verify code commits
+  jobs:
+  - job: verifyCommits
+    displayName: Verify code commits
+    steps:
+    - pwsh: |
+        ./scripts/.pr-validation.ps1
+      displayName: Validate
+      failOnStderr: true
+      ignoreLASTEXITCODE: false

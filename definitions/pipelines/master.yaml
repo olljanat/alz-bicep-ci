@@ -1,0 +1,24 @@
+# Based on https://github.com/Azure/ALZ-Bicep/wiki/PipelinesADO
+
+trigger:
+  batch: true
+  branches:
+   include:
+   - master
+
+pool:
+  name: CICDDeployPoolAnsible
+  demands:
+    - Agent.OS -equals Linux
+
+stages:
+- template: ../stages/deployALZ.yaml
+  parameters:
+    ServiceConnectionName: "AcceptanceALZ"
+    targetEnvironment: "acc"
+    deployChanges: "true"
+- template: ../stages/deployALZ.yaml
+  parameters:
+    ServiceConnectionName: "ProductionALZ"
+    targetEnvironment: "prd"
+    deployChanges: "true"

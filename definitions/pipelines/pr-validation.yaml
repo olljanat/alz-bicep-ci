@@ -1,0 +1,20 @@
+# Triggered by pull request policy
+trigger: none
+
+pool:
+  name: CICDDeployPoolAnsible
+  demands:
+    - Agent.OS -equals Linux
+
+stages:
+- template: ../stages/verifyCommits.yaml
+- template: ../stages/deployALZ.yaml
+  parameters:
+    ServiceConnectionName: "AcceptanceALZ"
+    targetEnvironment: "acc"
+    deployChanges: "false"
+- template: ../stages/deployALZ.yaml
+  parameters:
+    ServiceConnectionName: "ProductionALZ"
+    targetEnvironment: "prd"
+    deployChanges: "false"

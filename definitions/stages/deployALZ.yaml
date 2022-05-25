@@ -1,0 +1,56 @@
+parameters:
+- name: ServiceConnectionName
+  type: string
+- name: targetEnvironment
+  type: string
+  default: lab
+- name: deployChanges
+  type: string
+  default: false
+
+stages:
+- stage: deploy_${{ parameters.targetEnvironment }}
+  displayName: Deploy to ${{ parameters.targetEnvironment }}
+  jobs:
+  - template: ../jobs/deployModule.yaml
+    parameters:
+      ServiceConnectionName: ${{ parameters.ServiceConnectionName }}
+      targetEnvironment: ${{ parameters.targetEnvironment }}
+      scriptId: 01
+      scriptName: ManagementGroups
+      deployChanges: ${{ parameters.deployChanges }}
+  - template: ../jobs/deployModule.yaml
+    parameters:
+      ServiceConnectionName: ${{ parameters.ServiceConnectionName }}
+      targetEnvironment: ${{ parameters.targetEnvironment }}
+      scriptId: 02
+      scriptName: PolicyDefinitions
+      deployChanges: ${{ parameters.deployChanges }}
+  - template: ../jobs/deployModule.yaml
+    parameters:
+      ServiceConnectionName: ${{ parameters.ServiceConnectionName }}
+      targetEnvironment: ${{ parameters.targetEnvironment }}
+      scriptId: 03
+      scriptName: CustomRoleDefinitions
+      deployChanges: ${{ parameters.deployChanges }}
+
+  # Disabled because of known bugs:
+  # * https://github.com/Azure/arm-template-whatif/issues/176
+  # * https://github.com/Azure/arm-template-whatif/issues/251
+  #
+  # - template: ../jobs/deployModule.yaml
+  #   parameters:
+  #     ServiceConnectionName: ${{ parameters.ServiceConnectionName }}
+  #     targetEnvironment: ${{ parameters.targetEnvironment }}
+  #     scriptId: 04
+  #     scriptName: Logging
+  #     deployChanges: ${{ parameters.deployChanges }}
+
+
+  - template: ../jobs/deployModule.yaml
+    parameters:
+      ServiceConnectionName: ${{ parameters.ServiceConnectionName }}
+      targetEnvironment: ${{ parameters.targetEnvironment }}
+      scriptId: 05
+      scriptName: HubNetworking
+      deployChanges: ${{ parameters.deployChanges }}

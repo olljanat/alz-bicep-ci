@@ -1,0 +1,30 @@
+parameters:
+- name: ServiceConnectionName
+  type: string
+- name: targetEnvironment
+  type: string
+  default: lab
+- name: scriptId
+  type: string
+- name: scriptName
+  type: string
+- name: deployChanges
+  type: string
+  default: false
+
+jobs:
+- job: deploy_${{ parameters.scriptName }}
+  displayName: ${{ parameters.scriptName }}
+  steps:
+  - task: AzureCLI@2
+    inputs:
+      azureSubscription: ${{ parameters.ServiceConnectionName }}
+      scriptType: 'pscore'
+      scriptLocation: 'scriptPath'
+      scriptPath: 'scripts/${{ parameters.scriptId }}_${{ parameters.scriptName }}.ps1'
+      arguments: '-environment "${{ parameters.targetEnvironment }}" -DeployChanges "${{ parameters.deployChanges }}" -CI $true'
+      addSpnToEnvironment: true
+      useGlobalConfig: false
+      workingDirectory: '$(System.DefaultWorkingDirectory)'
+      failOnStandardError: true
+      powerShellIgnoreLASTEXITCODE: true
