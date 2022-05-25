@@ -1,0 +1,36 @@
+name: Unit Tests - Bicep Files and Modules
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "**.bicep"
+  workflow_dispatch: {}
+
+jobs:
+  bicep_unit_tests:
+    name: Bicep Build & Lint All Modules
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Bicep Build & Lint All Modules
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse -Filter '*.bicep' -Exclude 'callModuleFromACR.example.bicep','orch-hubSpoke.bicep' | ForEach-Object {
+              Write-Information "==> Attempting Bicep Build For File: $_" -InformationAction Continue
+              $output = bicep build $_.FullName 2>&1
+              if ($LastExitCode -ne 0)
+              {
+                throw $output
+              }
+              Else
+              {
+                echo $output
+              }   
+          }
