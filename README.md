@@ -5,8 +5,11 @@ This repository contains code which is used to manage Azure Enterprise Scale Lan
 Deployment scripts on "scripts" folder are configured on way that without parameters those will run on [what if](https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/deploy-what-if) mode against of LAB environment.
 
 You can trigger actual deployment by using `-DeployChanges "true"` parameter.
-You can also run script against of Acceptance environment by using `-environment "prd"`
+
+You can also run script against of Acceptance environment by using `-environment "acc"`
+
 You can also run script against of Production environment by using `-environment "prd"`
+
 
 However actual deployments against of production environment (`-DeployChanges "true" -environment "prd"`) is denied by script because purpose is validate code changes through pull requests first and let CI/CD on Azure DevOps to do actual deployments.
 
