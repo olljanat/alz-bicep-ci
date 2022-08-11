@@ -7,7 +7,7 @@ Function Deploy-AlzResource {
         [Parameter(Mandatory = $false)][ValidateNotNullOrEmpty()][string]$ResourceGroup,
         [Parameter(Mandatory = $true)][string]$DeploymentNamePrefix
     )
-    $DeploymentName = "$($env:USERNAME)-$DeploymentNamePrefix-$(Get-Date -Format 'yyyyMMddhhmm')"
+    $DeploymentName = "$($(git config user.name) -replace ' ','')-$DeploymentNamePrefix-$(Get-Date -Format 'yyyyMMddhhmm')"
     if ($env:BUILD_BUILDNUMBER) {
         $DeploymentName = "AzureDevOps-$DeploymentNamePrefix-$env:BUILD_BUILDNUMBER"
     }
@@ -120,13 +120,60 @@ Function Deploy-AlzResource {
         }
 
         "ResourceGroupDeployment" {
-            $result = az deployment group what-if `
-                --template-file $TemplateFile `
-                --parameters $TemplateParameterFile `
-                --resource-group $ResourceGroup `
-                --exclude-change-types Ignore NoChange `
-                --name "$($DeploymentName)-whatif" `
-                --only-show-errors
+
+            # Handle issue where WhatIf mode reports that all "virtualNetworkPeerings" and "remoteVirtualNetworkPeerings" values would be removed
+            if ($ResourceType -eq "HubNetworking") {
+                $global:result = "Resource changes: no change."
+
+                $whatIfJSON = az deployment group what-if `
+                    --template-file $TemplateFile `
+                    --parameters $TemplateParameterFile `
+                    --resource-group $ResourceGroup `
+                    --exclude-change-types Ignore NoChange `
+                    --name "$($DeploymentName)-whatif" `
+                    --only-show-errors `
+                    --no-pretty-print
+                $whatIf = $whatIfJSON | ConvertFrom-Json -Depth 999
+
+                $objectsToDelete = $whatIf.changes.delta | Where-Object {$_.propertyChangeType -eq "Delete" -and $_.path -ne "properties.virtualNetworkPeerings" -and $_.path -ne "properties.remoteVirtualNetworkPeerings"}
+                if ($objectsToDelete) {
+                    Write-Host "##[warning]$ResourceType - Found following changes including unsupported DELETE operations" -ForegroundColor Yellow
+                    Write-Host "##[warning]Note that 'properties.virtualNetworkPeerings' and 'properties.remoteVirtualNetworkPeerings' deletes are noise, those will not be deployed" -ForegroundColor Yellow
+                    az deployment group what-if `
+                    --template-file $TemplateFile `
+                    --parameters $TemplateParameterFile `
+                    --resource-group $ResourceGroup `
+                    --exclude-change-types Ignore NoChange `
+                    --name "$($DeploymentName)-whatif" `
+                    --only-show-errors
+
+                    Write-Host "Here is also non-formatted JSON version of that output for debug reasons:"
+                    $whatIfJSON
+                    throw "$ResourceType - Current code would trigger DELETE operation which is not allowed"
+                } else {
+                    $changes = $whatIf.changes.delta | Where-Object {$_.propertyChangeType -ne "Delete" -and $_.propertyChangeType -ne "NoEffect"}
+                    if ($changes) {
+                        Write-Host "##[warning]$ResourceType - Found following changes" -ForegroundColor Yellow
+                        $global:result = ""
+                        az deployment group what-if `
+                        --template-file $TemplateFile `
+                        --parameters $TemplateParameterFile `
+                        --resource-group $ResourceGroup `
+                        --exclude-change-types Ignore NoChange `
+                        --name "$($DeploymentName)-whatif" `
+                        --only-show-errors
+                    }
+                }
+
+            } else {
+                $global:result = az deployment group what-if `
+                    --template-file $TemplateFile `
+                    --parameters $TemplateParameterFile `
+                    --resource-group $ResourceGroup `
+                    --exclude-change-types Ignore NoChange `
+                    --name "$($DeploymentName)-whatif" `
+                    --only-show-errors
+            }
 
             if (-not ($result | Where-Object {$_ -eq "Resource changes: no change."})) {
                 if ($global:DeployChangesMode -ne $true) {
@@ -134,6 +181,7 @@ Function Deploy-AlzResource {
                 }
 
                 Write-Host "##[warning]$ResourceType - Found following changes" -ForegroundColor Yellow
+                Write-Host "##[warning]Note that 'properties.virtualNetworkPeerings' and 'properties.remoteVirtualNetworkPeerings' deletes are noise, those will not be deployed" -ForegroundColor Yellow
                 $result
 
                 if ($result | Where-Object {$_ -like "*- Delete*"}) {
@@ -158,4 +206,26 @@ Function Deploy-AlzResource {
             throw "Deployment type $DeploymentType is not supported"
         }
     }
+}
+
+Function Test-BicepVersion {
+    $bicepVersion = (((az bicep version) -split "Bicep CLI version ")[1] -split " \(")[0]
+    $bicepVersionParts = $bicepVersion -split "\."
+
+    # Versions 1.x.x
+    if ($bicepVersionParts[0] -gt 0) {
+        return
+    }
+
+    # Version 0.9.1 - 0.9.999
+    if ($bicepVersionParts[1] -eq 9 -and $bicepVersionParts[2] -ge 1) {
+        return
+    }
+
+    # Version 0.10.0 ...
+    if ($bicepVersionParts[1] -gt 9) {
+        return
+    }
+
+    throw "Bicep version: $bicepVersion is older than expected version >= 0.9.1"
 }

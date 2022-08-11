@@ -34,6 +34,8 @@ switch($environment) {
 
 . "$PSScriptRoot/.functions.ps1"
 
+Test-BicepVersion
+
 if ((az account show | ConvertFrom-JSON).homeTenantId -ne $tenantID) {
     Write-Host "##[warning] No valid session to correct Azure tenant. Will re-login..." -ForegroundColor Yellow
     az logout
