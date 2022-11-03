@@ -15,8 +15,8 @@ Function Invoke-AzureApiLogin {
     $RequestAccessTokenUri = "https://login.microsoftonline.com/$TenantId/oauth2/token"
 
     # https://docs.microsoft.com/en-us/azure/active-directory/develop/v1-oauth2-client-creds-grant-flow#request-an-access-token
-    $Body = "grant_type=client_credentials&client_id=$ClientId&client_secret=$ClientSecret&resource=$Resource"
-    $Token = Invoke-RestMethod -Method Post -Uri $RequestAccessTokenUri -Body $Body -ContentType 'application/x-www-form-urlencoded'
+    $resultody = "grant_type=client_credentials&client_id=$ClientId&client_secret=$ClientSecret&resource=$Resource"
+    $Token = Invoke-RestMethod -Method Post -Uri $RequestAccessTokenUri -Body $resultody -ContentType 'application/x-www-form-urlencoded'
     $global:AzureApiAuthenticationHeaders = @{"Authorization" = "$($Token.token_type) "+ "$($Token.access_token)"}
 }
 
@@ -39,7 +39,7 @@ Function Invoke-AzureApiWhatIf {
     # - responseContent
     # - requestContent,responseContent
 
-    $Body = @"
+    $resultody = @"
 {
   "properties": {
     "templateLink": {
@@ -63,11 +63,71 @@ Function Invoke-AzureApiWhatIf {
 
     # $Uri = "https://management.azure.com/subscriptions/$SubscriptionId/providers/Microsoft.Resources/deployments/$DeploymentName/whatIf?api-version=2021-04-01"
     $Uri = "https://management.azure.com/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$DeploymentName/whatIf?api-version=2021-04-01"
-    $request = Invoke-WebRequest -Method POST -Uri $Uri -Body $Body -ContentType 'application/json' -Headers $AzureApiAuthenticationHeaders
-    return $request.Headers.Location[0]
+    $request = Invoke-WebRequest -Method POST -Uri $Uri -Body $resultody -ContentType 'application/json' -Headers $AzureApiAuthenticationHeaders
+
+    for ($i=0; $i -lt 10; $i++) {
+        Start-Sleep -Seconds 5
+        $result = Invoke-RestMethod -Uri $request.Headers.Location[0] -Headers $AzureApiAuthenticationHeaders
+        if ($result) {
+            return $result
+        }
+    }
+    throw "Failed to fetch WhatIf result from URL: $($request.Headers.Location[0])"
 }
-<#
-$b = Invoke-RestMethod -Uri $a -Headers $AzureApiAuthenticationHeaders
-$b.status
-$.error
-#> 
+
+Function Get-AzureApiWhatIfParsedResult {
+    <#
+    .SYNOPSIS
+        Do What If deployment
+    .EXAMPLE
+        Get-AzureApiWhatIfParsedResult
+    #>
+    param (
+        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][object]$Result,
+        [Parameter(Mandatory = $false)][ValidateNotNullOrEmpty()][switch]$AllowDelete
+    )
+
+    if ($result.status -ne "Succeeded") {
+        $result.error
+        throw
+    }
+
+    $foundDelete = $false
+    forEach($change in $result.properties.changes) {
+        switch($change.changeType) {
+            "Ignore" { continue }
+            "NoChange" {
+                Write-Host "No changes found to: '$($change.resourceId)'" -ForegroundColor green
+            }
+            "Modify" {
+                $effectiveChanges = @()
+                forEach($propertyChange in $change.delta) {
+                    switch($propertyChange.propertyChangeType) {
+                        "NoEffect" { continue }
+                        "Delete" {
+
+                            # Filter out known WhatIf reporting issues
+                            if ($propertyChange.path -eq "properties.remoteVirtualNetworkPeerings") { continue }
+                            if ($propertyChange.path -eq "properties.virtualNetworkPeerings") { continue }
+
+                            $effectiveChanges += $propertyChange
+                            $foundDelete = $true
+                        }
+                        default {
+                            $effectiveChanges += $propertyChange
+                        }
+                    }
+                }
+                Write-Host "Found following changes to $($change.resourceId)" -ForegroundColor green
+                Write-Host $($effectiveChanges | ConvertTo-Json)
+            }
+            default {
+                throw "'$($change.changeType)' is unsupported change type"
+            }
+        }
+    }
+
+    if ($foundDelete -eq $true -and (-not ($AllowDelete))) {
+        throw "Found Delete and -AllowDelete switch is not given"
+    }
+}
