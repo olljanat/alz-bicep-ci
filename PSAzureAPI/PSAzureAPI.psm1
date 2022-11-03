@@ -43,7 +43,7 @@ Function Invoke-AzureApiWhatIf {
 {
   "properties": {
     "templateLink": {
-      "uri": "https://raw.githubusercontent.com/olljanat/alz-bicep-ci/ps-whatif/template/template.json"
+      "uri": "https://raw.githubusercontent.com/olljanat/alz-bicep-ci/ps-whatif/template/template2.json"
     },
     "parameters": {
         "virtualNetworks_test_net_name": {
