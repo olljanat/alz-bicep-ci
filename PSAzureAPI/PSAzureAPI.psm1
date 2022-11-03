@@ -62,7 +62,8 @@ Function Invoke-AzureApiWhatIf {
 "@
 
     # $Uri = "https://management.azure.com/subscriptions/$SubscriptionId/providers/Microsoft.Resources/deployments/$DeploymentName/whatIf?api-version=2021-04-01"
-    $Uri = "https://management.azure.com/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$DeploymentName/whatIf?api-version=2021-04-01"
+    $Uri = "https://management.azure.com/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$DeploymentName/whatIf?api-version=2022-05-01"
+    # $Uri = "https://management.azure.com/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$($DeploymentName)?api-version=2022-05-01"
     $request = Invoke-WebRequest -Method POST -Uri $Uri -Body $resultody -ContentType 'application/json' -Headers $AzureApiAuthenticationHeaders
 
     for ($i=0; $i -lt 10; $i++) {
@@ -119,7 +120,7 @@ Function Get-AzureApiWhatIfParsedResult {
                     }
                 }
                 Write-Host "Found following changes to $($change.resourceId)" -ForegroundColor green
-                Write-Host $($effectiveChanges | ConvertTo-Json)
+                Write-Host $($effectiveChanges | ConvertTo-Json -Depth 100)
             }
             default {
                 throw "'$($change.changeType)' is unsupported change type"
