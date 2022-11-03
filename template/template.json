@@ -23,19 +23,6 @@
                         "10.0.0.0/16"
                     ]
                 },
-                "subnets": [
-                    {
-                        "name": "default",
-                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworks_test_net_name'), 'default')]",
-                        "properties": {
-                            "addressPrefix": "10.0.0.0/24",
-                            "delegations": [],
-                            "privateEndpointNetworkPolicies": "Disabled",
-                            "privateLinkServiceNetworkPolicies": "Enabled"
-                        },
-                        "type": "Microsoft.Network/virtualNetworks/subnets"
-                    }
-                ],
                 "virtualNetworkPeerings": [],
                 "enableDdosProtection": false
             }
