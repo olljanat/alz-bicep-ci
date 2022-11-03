@@ -43,12 +43,16 @@ Function Invoke-AzureApiWhatIf {
 {
   "properties": {
     "templateLink": {
-      "uri": "https://example.com/exampleTemplate.json"
+      "uri": "https://raw.githubusercontent.com/olljanat/alz-bicep-ci/ps-whatif/template/template.json"
     },
-    "parameters": {},
+    "parameters": {
+        "virtualNetworks_test_net_name": {
+            "value": "test-net"
+        }
+    },
     "mode": "incremental",
     "debugSetting": {
-        "detailLevel": "responseContent"
+        "detailLevel": "none"
     },
     "whatIfSettings": {
         "resultFormat": "FullResourcePayloads"
@@ -59,6 +63,11 @@ Function Invoke-AzureApiWhatIf {
 
     # $Uri = "https://management.azure.com/subscriptions/$SubscriptionId/providers/Microsoft.Resources/deployments/$DeploymentName/whatIf?api-version=2021-04-01"
     $Uri = "https://management.azure.com/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$DeploymentName/whatIf?api-version=2021-04-01"
-    $result = Invoke-RestMethod -Method Post -Uri $Uri -Body $Body -ContentType 'application/json'  -Headers $AzureApiAuthenticationHeaders
-    return $result
+    $request = Invoke-WebRequest -Method POST -Uri $Uri -Body $Body -ContentType 'application/json' -Headers $AzureApiAuthenticationHeaders
+    return $request.Headers.Location[0]
 }
+<#
+$b = Invoke-RestMethod -Uri $a -Headers $AzureApiAuthenticationHeaders
+$b.status
+$.error
+#> 
