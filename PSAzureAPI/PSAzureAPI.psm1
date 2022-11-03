@@ -39,16 +39,58 @@ Function Invoke-AzureApiWhatIf {
     # - responseContent
     # - requestContent,responseContent
 
-    $resultody = @"
+    $requestBody = @'
 {
   "properties": {
-    "templateLink": {
-      "uri": "https://raw.githubusercontent.com/olljanat/alz-bicep-ci/ps-whatif/template/template2.json"
-    },
     "parameters": {
         "virtualNetworks_test_net_name": {
             "value": "test-net"
         }
+    },
+    "template": {
+        "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+        "contentVersion": "1.0.0.0",
+        "parameters": {
+            "virtualNetworks_test_net_name": {
+                "defaultValue": "test-net",
+                "type": "String"
+            }
+        },
+        "variables": {},
+        "resources": [
+            {
+                "type": "Microsoft.Network/virtualNetworks",
+                "apiVersion": "2022-01-01",
+                "name": "[parameters('virtualNetworks_test_net_name')]",
+                "location": "westeurope",
+                "tags": {
+                    "foo": "bar"
+                },
+                "properties": {
+                    "addressSpace": {
+                        "addressPrefixes": [
+                            "10.0.0.0/16"
+                        ]
+                    },
+                    "virtualNetworkPeerings": [],
+                    "enableDdosProtection": false
+                }
+            },
+            {
+                "type": "Microsoft.Network/virtualNetworks/subnets",
+                "apiVersion": "2022-01-01",
+                "name": "[concat(parameters('virtualNetworks_test_net_name'), '/default')]",
+                "dependsOn": [
+                    "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworks_test_net_name'))]"
+                ],
+                "properties": {
+                    "addressPrefix": "10.0.0.0/24",
+                    "delegations": [],
+                    "privateEndpointNetworkPolicies": "Disabled",
+                    "privateLinkServiceNetworkPolicies": "Enabled"
+                }
+            }
+        ]
     },
     "mode": "incremental",
     "debugSetting": {
@@ -59,12 +101,12 @@ Function Invoke-AzureApiWhatIf {
     },
   }
 }
-"@
+'@
 
     # $Uri = "https://management.azure.com/subscriptions/$SubscriptionId/providers/Microsoft.Resources/deployments/$DeploymentName/whatIf?api-version=2021-04-01"
     $Uri = "https://management.azure.com/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$DeploymentName/whatIf?api-version=2022-05-01"
     # $Uri = "https://management.azure.com/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$($DeploymentName)?api-version=2022-05-01"
-    $request = Invoke-WebRequest -Method POST -Uri $Uri -Body $resultody -ContentType 'application/json' -Headers $AzureApiAuthenticationHeaders
+    $request = Invoke-WebRequest -Method POST -Uri $Uri -Body $requestBody -ContentType 'application/json' -Headers $AzureApiAuthenticationHeaders
 
     for ($i=0; $i -lt 10; $i++) {
         Start-Sleep -Seconds 5
@@ -131,4 +173,106 @@ Function Get-AzureApiWhatIfParsedResult {
     if ($foundDelete -eq $true -and (-not ($AllowDelete))) {
         throw "Found Delete and -AllowDelete switch is not given"
     }
+}
+
+Function Invoke-AzureApiDeployment {
+    <#
+    .SYNOPSIS
+        Do What If deployment
+    .EXAMPLE
+        Invoke-AzureApiDeployment
+    #>
+    param (
+        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$SubscriptionId,
+        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$ResourceGroupName,
+        [Parameter(Mandatory = $true)][ValidateNotNullOrEmpty()][string]$DeploymentName
+    )
+
+    # detailLevel:
+    # - none
+    # - requestContent
+    # - responseContent
+    # - requestContent,responseContent
+
+    $requestBody = @'
+{
+  "properties": {
+    "parameters": {
+        "virtualNetworks_test_net_name": {
+            "value": "test-net"
+        }
+    },
+    "template": {
+        "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+        "contentVersion": "1.0.0.0",
+        "parameters": {
+            "virtualNetworks_test_net_name": {
+                "defaultValue": "test-net",
+                "type": "String"
+            }
+        },
+        "variables": {},
+        "resources": [
+            {
+                "type": "Microsoft.Network/virtualNetworks",
+                "apiVersion": "2022-05-01",
+                "name": "[parameters('virtualNetworks_test_net_name')]",
+                "location": "westeurope",
+                "tags": {
+                    "foo": "bar"
+                },
+                "properties": {
+                    "addressSpace": {
+                        "addressPrefixes": [
+                            "10.0.0.0/16"
+                        ]
+                    },
+                    "virtualNetworkPeerings": [],
+                    "enableDdosProtection": false
+                }
+            },
+            {
+                "type": "Microsoft.Network/virtualNetworks/subnets",
+                "apiVersion": "2022-05-01",
+                "name": "[concat(parameters('virtualNetworks_test_net_name'), '/default')]",
+                "dependsOn": [
+                    "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworks_test_net_name'))]"
+                ],
+                "properties": {
+                    "addressPrefix": "10.0.0.0/24",
+                    "delegations": [],
+                    "privateEndpointNetworkPolicies": "Disabled",
+                    "privateLinkServiceNetworkPolicies": "Enabled"
+                }
+            },
+            {
+                "type": "Microsoft.Network/virtualNetworks/subnets",
+                "apiVersion": "2022-05-01",
+                "name": "[concat(parameters('virtualNetworks_test_net_name'), '/foo')]",
+                "dependsOn": [
+                    "[resourceId('Microsoft.Network/virtualNetworks', parameters('virtualNetworks_test_net_name'))]"
+                ],
+                "properties": {
+                    "addressPrefix": "10.0.3.0/24",
+                    "delegations": [],
+                    "privateEndpointNetworkPolicies": "Disabled",
+                    "privateLinkServiceNetworkPolicies": "Enabled",
+                    "routeTable": {
+                        "id": "/subscriptions/b747a63d-ddb4-4f44-ab3a-76a93d7b0f48/resourceGroups/oj-test/providers/Microsoft.Network/routeTables/routeIt"
+                    }
+                }
+            }
+        ]
+    },
+    "mode": "incremental",
+    "debugSetting": {
+        "detailLevel": "none"
+    }
+  }
+}
+'@
+
+    $Uri = "https://management.azure.com/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$($DeploymentName)?api-version=2022-05-01"
+    $request = Invoke-WebRequest -Method PUT -Uri $Uri -Body $requestBody -ContentType 'application/json' -Headers $AzureApiAuthenticationHeaders
+    return $request
 }
