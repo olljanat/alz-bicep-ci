@@ -14,9 +14,6 @@
             "apiVersion": "2022-01-01",
             "name": "[parameters('virtualNetworks_test_net_name')]",
             "location": "westeurope",
-            "dependsOn": [
-                "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworks_test_net_name'), 'default')]"
-            ],
             "tags": {
                 "foo": "bar"
             },
